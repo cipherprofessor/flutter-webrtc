@@ -11,7 +11,12 @@ class RTCRtpReceiverNative extends RTCRtpReceiver {
 
   factory RTCRtpReceiverNative.fromMap(Map<dynamic, dynamic> map,
       {required String peerConnectionId}) {
-    var track = MediaStreamTrackNative.fromMap(map['track'], peerConnectionId);
+    // The native side sends an empty map for a receiver without a track, for
+    // example the receiver of a stopped transceiver on desktop.
+    Map<dynamic, dynamic>? trackMap = map['track'];
+    var track = (trackMap != null && trackMap.isNotEmpty)
+        ? MediaStreamTrackNative.fromMap(trackMap, peerConnectionId)
+        : null;
     var parameters = RTCRtpParameters.fromMap(map['rtpParameters']);
     return RTCRtpReceiverNative(
         map['receiverId'], track, parameters, peerConnectionId);
@@ -30,7 +35,7 @@ class RTCRtpReceiverNative extends RTCRtpReceiver {
     try {
       final response = await WebRTC.invokeMethod('getStats', <String, dynamic>{
         'peerConnectionId': _peerConnectionId,
-        'trackId': track.id
+        if (track != null) 'trackId': track!.id,
       });
       var stats = <StatsReport>[];
       if (response != null) {
@@ -49,7 +54,7 @@ class RTCRtpReceiverNative extends RTCRtpReceiver {
   /// private:
   String _id;
   String _peerConnectionId;
-  MediaStreamTrack _track;
+  MediaStreamTrack? _track;
   RTCRtpParameters _parameters;
 
   /// The WebRTC specification only defines RTCRtpParameters in terms of senders,
@@ -59,7 +64,7 @@ class RTCRtpReceiverNative extends RTCRtpReceiver {
   RTCRtpParameters get parameters => _parameters;
 
   @override
-  MediaStreamTrack get track => _track;
+  MediaStreamTrack? get track => _track;
 
   @override
   String get receiverId => _id;
